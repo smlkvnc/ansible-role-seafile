@@ -1,0 +1,49 @@
+---
+- name: Copy Installation Script
+  copy: 
+    src: seafile-9.0_ubuntu
+    dest: /root
+    mode: '0755'
+
+- name: Copy Answer Key
+  copy: 
+    src: answer.txt
+    dest: /root 
+
+- name: Replace Variables
+  lineinfile: 
+    path: /root/seafile-9.0_ubuntu
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop: 
+    - { regexp: '^IP_OR_DOMAIN=127.0.0.1', line: "IP_OR_DOMAIN={{ server_ip }}" }
+    - { regexp: '^TIME_ZONE=Europe/Berlin', line: "TIME_ZONE=Europe/Istanbul" }
+
+
+- name: Execute Script
+  shell: 
+    cmd: ./seafile-9.0_ubuntu "{{ version }}" < answer.txt
+    chdir: /root
+
+- name: Configure seafile.conf File
+  template:
+    src: seafile.conf.j2
+    dest: /etc/nginx/sites-available/seafile.conf
+
+- name: Delete Default File
+  file: 
+    path: /etc/nginx/sites-available/default
+    state: absent
+
+- name: Copy Certs
+  copy: 
+    src: "{{ item }}"
+    dest: /etc/ssl/certs/
+  loop: 
+    - fullchain.crt
+    - priv.key
+
+- name: Reload Nginx
+  shell: 
+    cmd: nginx -s reload
+
